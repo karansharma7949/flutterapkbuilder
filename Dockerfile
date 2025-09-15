@@ -1,6 +1,6 @@
 # Dockerfile to run Node backend and build APKs using Flutter + Android SDK
-# Base image with Flutter SDK and Android tooling
-FROM ghcr.io/cirruslabs/flutter:stable-android as runtime
+# Base image with Flutter SDK (stable channel). Includes Android tooling in stable image.
+FROM ghcr.io/cirruslabs/flutter:stable as runtime
 
 # Install Node.js (LTS) and other utilities
 RUN apt-get update && \
