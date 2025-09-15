@@ -16,6 +16,7 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const execAsync = promisify(exec);
+const SKIP_TOOLING_CHECK = String(process.env.SKIP_TOOLING_CHECK || '').toLowerCase() === 'true' || process.env.SKIP_TOOLING_CHECK === '1';
 
 // Middleware
 app.use(express.json());
@@ -46,6 +47,27 @@ function extractZip(zipPath, extractPath) {
             readStream.pipe(writeStream);
             writeStream.on('close', () => zipfile.readEntry());
           });
+
+// Tooling readiness endpoint
+app.get('/tooling-status', async (req, res) => {
+  try {
+    const toolingDir = path.join('/', 'app', '.tooling');
+    const readyPath = path.join(toolingDir, '.ready');
+    const installing = !(await fs.pathExists(readyPath));
+    const exists = await fs.pathExists(toolingDir);
+    res.json({
+      exists,
+      installing,
+      ready: !installing,
+      paths: {
+        toolingDir,
+        readyPath
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'StatusError', message: e.message });
+  }
+});
         }
       });
       
@@ -104,16 +126,7 @@ async function downloadFile(url, outputPath) {
 // Main POST endpoint to build Flutter APK
 app.post('/build-apk', async (req, res) => {
   const { app_name, app_url, logo_url, package_name } = req.body;
-  // Ensure runtime tooling is ready (Flutter/Android installed by entrypoint)
-  try {
-    const toolingReady = await fs.pathExists('/app/.tooling/.ready');
-    if (!toolingReady) {
-      return res.status(503).json({
-        error: 'ToolingNotReady',
-        message: 'Tooling is still installing. Please retry in a minute.'
-      });
-    }
-  } catch (_) {}
+  // No tooling check needed - Flutter/Android are pre-installed in the base image
   
   // Validate required fields
   if (!app_name || !app_url || !logo_url || !package_name) {
@@ -209,13 +222,7 @@ app.post('/build-apk', async (req, res) => {
     // Change to working directory and run Flutter commands
     process.chdir(workingDir);
     
-    // Ensure git safe.directory for Flutter SDK to avoid 'detected dubious ownership'
-    try {
-      console.log('Configuring git safe.directory for Flutter SDK...');
-      await execAsync('git config --global --add safe.directory /sdks/flutter');
-    } catch (e) {
-      console.warn('Warning: failed to set git safe.directory for /sdks/flutter:', e.message);
-    }
+    // Git safe.directory already configured in Dockerfile
 
     // Get dependencies
     console.log('Getting Flutter dependencies...');
@@ -394,6 +401,20 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Tooling readiness endpoint for introspection
+app.get('/tooling', async (req, res) => {
+  try {
+    // With full Flutter image, tooling is always ready
+    res.json({
+      ready: true,
+      preInstalled: true,
+      flutterPath: '/sdks/flutter'
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'ToolingCheckFailed', message: e.message });
+  }
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
@@ -412,6 +433,7 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Flutter APK Builder server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Tooling status: http://localhost:${PORT}/tooling`);
   console.log(`API Documentation: http://localhost:${PORT}/`);
 });
 
