@@ -104,6 +104,16 @@ async function downloadFile(url, outputPath) {
 // Main POST endpoint to build Flutter APK
 app.post('/build-apk', async (req, res) => {
   const { app_name, app_url, logo_url, package_name } = req.body;
+  // Ensure runtime tooling is ready (Flutter/Android installed by entrypoint)
+  try {
+    const toolingReady = await fs.pathExists('/app/.tooling/.ready');
+    if (!toolingReady) {
+      return res.status(503).json({
+        error: 'ToolingNotReady',
+        message: 'Tooling is still installing. Please retry in a minute.'
+      });
+    }
+  } catch (_) {}
   
   // Validate required fields
   if (!app_name || !app_url || !logo_url || !package_name) {
