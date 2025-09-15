@@ -182,9 +182,11 @@ app.post('/build-apk', async (req, res) => {
     let constantsContent;
     if (await fs.pathExists(constantsPath)) {
       constantsContent = await fs.readFile(constantsPath, 'utf8');
-      constantsContent = constantsContent.replace('APP_URL_PLACEHOLDER', app_url);
+      constantsContent = constantsContent.replace(new RegExp('APP_URL_PLACEHOLDER', 'g'), app_url);
+      console.log(`Replaced APP_URL_PLACEHOLDER with ${app_url} in constants.dart`);
     } else {
-      constantsContent = defaultConstants.replace('APP_URL_PLACEHOLDER', app_url);
+      constantsContent = defaultConstants.replace(new RegExp('APP_URL_PLACEHOLDER', 'g'), app_url);
+      console.log(`Updated constants.dart with URL: ${app_url}`);
     }
     await fs.writeFile(constantsPath, constantsContent);
     
@@ -204,7 +206,7 @@ app.post('/build-apk', async (req, res) => {
       + `org.gradle.daemon=false\n`
       + `org.gradle.parallel=false\n`
       + `org.gradle.workers.max=2\n`
-      + `org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8\n`
+      + `org.gradle.jvmargs=-Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=2\n`
       + `android.useAndroidX=true\n`
       + `android.enableJetifier=false\n`;
     try {
