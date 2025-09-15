@@ -165,11 +165,13 @@ app.post('/build-apk', async (req, res) => {
     }
     await fs.writeFile(constantsPath, constantsContent);
     
-    // Fix Gradle version compatibility
+    // Fix Gradle version compatibility and reduce distribution size (use bin over all)
     console.log('Updating Gradle version...');
     const gradleWrapperPath = path.join(workingDir, 'android', 'gradle', 'wrapper', 'gradle-wrapper.properties');
     let gradleContent = await fs.readFile(gradleWrapperPath, 'utf8');
-    gradleContent = gradleContent.replace('gradle-8.3-all.zip', 'gradle-8.4-all.zip');
+    gradleContent = gradleContent
+      .replace(/gradle-8\.3-(all|bin)\.zip/g, 'gradle-8.4-bin.zip')
+      .replace(/gradle-8\.4-(all)\.zip/g, 'gradle-8.4-bin.zip');
     await fs.writeFile(gradleWrapperPath, gradleContent);
 
     // Constrain Gradle memory and disable daemon to avoid OOM/daemon crash in limited environments
@@ -177,7 +179,9 @@ app.post('/build-apk', async (req, res) => {
     const gradlePropsPath = path.join(workingDir, 'android', 'gradle.properties');
     const gradleProps = `# Added by server.js for Railway build stability\n`
       + `org.gradle.daemon=false\n`
-      + `org.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8\n`
+      + `org.gradle.parallel=false\n`
+      + `org.gradle.workers.max=1\n`
+      + `org.gradle.jvmargs=-Xmx512m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8\n`
       + `android.useAndroidX=true\n`
       + `android.enableJetifier=true\n`;
     try {
@@ -237,12 +241,12 @@ storeFile=upload-keystore.jks`;
     
     // Build APK (release version) with reduced memory usage
     console.log('Building APK...');
-    await execAsync('flutter build apk --release --no-shrink', {
+    await execAsync('flutter build apk --release --no-shrink --no-tree-shake-icons', {
       env: {
         ...process.env,
         CI: 'true',
-        GRADLE_OPTS: '-Xmx1024m -Dorg.gradle.daemon=false',
-        JAVA_TOOL_OPTIONS: '-Xmx1024m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8'
+        GRADLE_OPTS: '-Xmx512m -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1',
+        JAVA_TOOL_OPTIONS: '-Xmx512m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8'
       }
     });
     

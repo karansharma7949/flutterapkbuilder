@@ -40,7 +40,19 @@ RUN set -eux; \
 ENV PORT=3000
 EXPOSE 3000
 
-# Default working dir for the server
+# Provide dedicated Gradle cache location within the app directory
+ENV GRADLE_USER_HOME=/app/.gradle
+RUN mkdir -p /app/.gradle && chmod -R 777 /app/.gradle
+
+# Create a non-root user to run Flutter/Gradle more safely
+RUN useradd -m -u 10001 app && \
+    mkdir -p /home/app/.android /home/app/.gradle && \
+    chown -R app:app /home/app /app
+
+# Switch to non-root user
+USER app
+
+# Default working dir for the server (after switching user)
 WORKDIR /app/flutter-apk-builder
 
 # Start the Node.js server
