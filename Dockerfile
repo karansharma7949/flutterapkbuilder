@@ -55,5 +55,9 @@ USER app
 # Default working dir for the server (after switching user)
 WORKDIR /app/flutter-apk-builder
 
+# Configure git safe.directory so Flutter (installed under /sdks/flutter) can use git
+RUN git config --global --add safe.directory /sdks/flutter && \
+    git config --global --add safe.directory /app
+
 # Start the Node.js server
 CMD ["npm", "start"]

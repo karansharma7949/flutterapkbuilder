@@ -199,6 +199,14 @@ app.post('/build-apk', async (req, res) => {
     // Change to working directory and run Flutter commands
     process.chdir(workingDir);
     
+    // Ensure git safe.directory for Flutter SDK to avoid 'detected dubious ownership'
+    try {
+      console.log('Configuring git safe.directory for Flutter SDK...');
+      await execAsync('git config --global --add safe.directory /sdks/flutter');
+    } catch (e) {
+      console.warn('Warning: failed to set git safe.directory for /sdks/flutter:', e.message);
+    }
+
     // Get dependencies
     console.log('Getting Flutter dependencies...');
     await execAsync('flutter pub get');
