@@ -31,8 +31,12 @@ flutter_url="https://storage.googleapis.com/flutter_infra_release/releases/stabl
 cmdline_tools_url="https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
 
 download_with_resume() {
-  local url="$1"; shift
-  local dest="$2"; shift
+  local url="${1:-}"
+  local dest="${2:-}"
+  if [ -z "$url" ] || [ -z "$dest" ]; then
+    echo "[entrypoint] download_with_resume: missing args (url or dest)" >&2
+    return 1
+  fi
   local tmp="${dest}.part"
   local attempts=5
   echo "[entrypoint] Downloading $url -> $dest (resumable)"
