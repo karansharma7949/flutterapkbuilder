@@ -204,9 +204,9 @@ app.post('/build-apk', async (req, res) => {
       + `org.gradle.daemon=false\n`
       + `org.gradle.parallel=false\n`
       + `org.gradle.workers.max=1\n`
-      + `org.gradle.jvmargs=-Xmx512m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8\n`
+      + `org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8\n`
       + `android.useAndroidX=true\n`
-      + `android.enableJetifier=true\n`;
+      + `android.enableJetifier=false\n`;
     try {
       if (await fs.pathExists(gradlePropsPath)) {
         const existing = await fs.readFile(gradlePropsPath, 'utf8');
@@ -266,12 +266,12 @@ storeFile=upload-keystore.jks`;
     
     // Build APK (release version) with reduced memory usage
     console.log('Building APK...');
-    await execAsync('flutter build apk --release --no-shrink --no-tree-shake-icons', {
+    await execAsync('flutter build apk --release --no-shrink --no-tree-shake-icons --android-skip-build-dependency-validation', {
       env: {
         ...process.env,
         CI: 'true',
-        GRADLE_OPTS: '-Xmx512m -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1',
-        JAVA_TOOL_OPTIONS: '-Xmx512m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8'
+        GRADLE_OPTS: '-Xmx1536m -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1',
+        JAVA_TOOL_OPTIONS: '-Xmx1536m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8'
       }
     });
     
