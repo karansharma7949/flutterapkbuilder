@@ -46,8 +46,17 @@ RUN mkdir -p /app/.gradle && chmod -R 777 /app/.gradle
 
 # Create a non-root user to run Flutter/Gradle more safely
 RUN useradd -m -u 10001 app && \
-    mkdir -p /home/app/.android /home/app/.gradle && \
-    chown -R app:app /home/app /app
+    mkdir -p /home/app/.android /home/app/.gradle /home/app/.pub-cache && \
+    # Make a user-local writable copy of the Flutter SDK
+    cp -a /sdks/flutter /home/app/flutter && \
+    chown -R app:app /home/app /app /home/app/flutter && \
+    chown -R app:app /opt/android-sdk /opt/android-sdk-linux 2>/dev/null || true
+
+# Configure environment for Flutter and Dart pub cache (point to user-local SDK)
+ENV FLUTTER_ROOT=/home/app/flutter
+ENV FLUTTER_HOME=/home/app/flutter
+ENV PUB_CACHE=/home/app/.pub-cache
+ENV PATH="$FLUTTER_ROOT/bin:$PATH"
 
 # Switch to non-root user
 USER app
@@ -55,8 +64,8 @@ USER app
 # Default working dir for the server (after switching user)
 WORKDIR /app/flutter-apk-builder
 
-# Configure git safe.directory so Flutter (installed under /sdks/flutter) can use git
-RUN git config --global --add safe.directory /sdks/flutter && \
+# Configure git safe.directory so Flutter SDK can use git
+RUN git config --global --add safe.directory /home/app/flutter && \
     git config --global --add safe.directory /app
 
 # Start the Node.js server
