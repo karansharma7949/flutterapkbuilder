@@ -1,0 +1,72 @@
+# Root .gitignore for monorepo (Node backend + Flutter app)
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Archives (block all by default)
+*.zip
+*.tar.gz
+*.rar
+
+# Allow only the Flutter template zip required by the backend
+!webview-template-main.zip
+
+# Node backend
+flutter-apk-builder/node_modules/
+flutter-apk-builder/npm-debug.log*
+flutter-apk-builder/yarn-debug.log*
+flutter-apk-builder/yarn-error.log*
+flutter-apk-builder/coverage/
+flutter-apk-builder/.nyc_output/
+flutter-apk-builder/.npm/
+flutter-apk-builder/.eslintcache
+flutter-apk-builder/.cache
+flutter-apk-builder/.parcel-cache
+flutter-apk-builder/.env
+flutter-apk-builder/.env.*
+# Backend build artifacts and generated APKs
+flutter-apk-builder/builds/
+flutter-apk-builder/tmp/
+flutter-apk-builder/temp/
+flutter-apk-builder/logs/
+flutter-apk-builder/*.log
+flutter-apk-builder/*.apk
+flutter-apk-builder/*.aab
+flutter-apk-builder/*.ipa
+
+# Flutter app
+webview-template-main/build/
+webview-template-main/.dart_tool/
+webview-template-main/.flutter-plugins
+webview-template-main/.flutter-plugins-dependencies
+webview-template-main/.packages
+webview-template-main/.metadata
+webview-template-main/.env
+# Android specific
+webview-template-main/android/.gradle/
+webview-template-main/android/gradlew
+webview-template-main/android/gradlew.bat
+webview-template-main/android/local.properties
+webview-template-main/android/**/GeneratedPluginRegistrant.java
+webview-template-main/android/key.properties
+*.jks
+# iOS / macOS / Windows / Linux generated
+webview-template-main/**/DerivedData/
+webview-template-main/**/Pods/
+webview-template-main/**/.symlinks/
+webview-template-main/**/profile
+webview-template-main/**/xcuserdata
+webview-template-main/ios/Flutter/ephemeral
+webview-template-main/**/flutter/generated_plugin_registrant.*
+
+# Web build service worker
+webview-template-main/web/flutter_service_worker.js

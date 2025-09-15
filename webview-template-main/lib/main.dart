@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/services.dart'; // For SystemNavigator
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'config/constants.dart';
 import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 
@@ -42,8 +41,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
 
     // Get initial URL with fallback
-    final String initialUrl =
-        dotenv.env['WEBVIEW_URL'] ?? '';
+    final String initialUrl = kWebviewUrl;
 
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -78,8 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final String logoPath =
-        dotenv.env['SPLASH_LOGO'] ?? 'assets/icons/logo.png';
+    final String logoPath = kSplashLogo;
     final Widget splashLogo =
         (logoPath.startsWith('http://') || logoPath.startsWith('https://'))
             ? Image.network(

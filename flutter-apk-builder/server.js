@@ -126,12 +126,44 @@ app.post('/build-apk', async (req, res) => {
     console.log('Extracting template...');
     await extractZip(templateZipPath, buildDir);
     
-    // Update .env file
-    console.log('Updating .env file...');
-    const envPath = path.join(workingDir, '.env');
-    let envContent = await fs.readFile(envPath, 'utf8');
-    envContent = envContent.replace('APP_URL_PLACEHOLDER', app_url);
-    await fs.writeFile(envPath, envContent);
+    // Overwrite extracted template files with refactored versions from repo
+    // to ensure we use constants-based config instead of .env
+    console.log('Syncing refactored template files...');
+    const repoTemplateDir = path.join(__dirname, '..', 'webview-template-main');
+    try {
+      const srcMain = path.join(repoTemplateDir, 'lib', 'main.dart');
+      const destMain = path.join(workingDir, 'lib', 'main.dart');
+      await fs.copy(srcMain, destMain, { overwrite: true, errorOnExist: false });
+    } catch (e) {
+      console.warn('Warning: Failed to sync main.dart from repo template:', e.message);
+    }
+    try {
+      const srcPubspec = path.join(repoTemplateDir, 'pubspec.yaml');
+      const destPubspec = path.join(workingDir, 'pubspec.yaml');
+      await fs.copy(srcPubspec, destPubspec, { overwrite: true, errorOnExist: false });
+    } catch (e) {
+      console.warn('Warning: Failed to sync pubspec.yaml from repo template:', e.message);
+    }
+    
+    // Ensure/update Flutter constants file with provided URL
+    console.log('Configuring Flutter constants...');
+    const constantsDir = path.join(workingDir, 'lib', 'config');
+    const constantsPath = path.join(constantsDir, 'constants.dart');
+    await fs.ensureDir(constantsDir);
+    const defaultConstants = `/// Global configuration constants for the WebView app.\n`
+      + `/// These are intentionally plain constants (not secrets) to avoid .env usage.\n\n`
+      + `/// The URL the WebView should load on startup.\n`
+      + `const String kWebviewUrl = 'APP_URL_PLACEHOLDER';\n\n`
+      + `/// The splash logo path. Can be a network URL (http/https) or a local asset path.\n`
+      + `const String kSplashLogo = 'assets/icons/logo.png';\n`;
+    let constantsContent;
+    if (await fs.pathExists(constantsPath)) {
+      constantsContent = await fs.readFile(constantsPath, 'utf8');
+      constantsContent = constantsContent.replace('APP_URL_PLACEHOLDER', app_url);
+    } else {
+      constantsContent = defaultConstants.replace('APP_URL_PLACEHOLDER', app_url);
+    }
+    await fs.writeFile(constantsPath, constantsContent);
     
     // Fix Gradle version compatibility
     console.log('Updating Gradle version...');
@@ -139,7 +171,27 @@ app.post('/build-apk', async (req, res) => {
     let gradleContent = await fs.readFile(gradleWrapperPath, 'utf8');
     gradleContent = gradleContent.replace('gradle-8.3-all.zip', 'gradle-8.4-all.zip');
     await fs.writeFile(gradleWrapperPath, gradleContent);
-    
+
+    // Constrain Gradle memory and disable daemon to avoid OOM/daemon crash in limited environments
+    console.log('Configuring Gradle properties for low-memory environment...');
+    const gradlePropsPath = path.join(workingDir, 'android', 'gradle.properties');
+    const gradleProps = `# Added by server.js for Railway build stability\n`
+      + `org.gradle.daemon=false\n`
+      + `org.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8\n`
+      + `android.useAndroidX=true\n`
+      + `android.enableJetifier=true\n`;
+    try {
+      if (await fs.pathExists(gradlePropsPath)) {
+        const existing = await fs.readFile(gradlePropsPath, 'utf8');
+        const merged = existing + (existing.endsWith('\n') ? '' : '\n') + gradleProps;
+        await fs.writeFile(gradlePropsPath, merged);
+      } else {
+        await fs.writeFile(gradlePropsPath, gradleProps);
+      }
+    } catch (e) {
+      console.warn('Warning: failed to write gradle.properties:', e.message);
+    }
+
     // Change to working directory and run Flutter commands
     process.chdir(workingDir);
     
@@ -183,15 +235,23 @@ keyAlias=upload
 storeFile=upload-keystore.jks`;
     await fs.writeFile(keyPropertiesPath, keyProperties);
     
-    // Build APK (release version)
+    // Build APK (release version) with reduced memory usage
     console.log('Building APK...');
-    await execAsync('flutter build apk --release');
+    await execAsync('flutter build apk --release --no-shrink', {
+      env: {
+        ...process.env,
+        CI: 'true',
+        GRADLE_OPTS: '-Xmx1024m -Dorg.gradle.daemon=false',
+        JAVA_TOOL_OPTIONS: '-Xmx1024m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8'
+      }
+    });
     
     // Copy APK to builds directory
     const apkSourcePath = path.join(workingDir, 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
     const apkDestPath = path.join(buildDir, `${app_name.replace(/\s+/g, '_')}-release.apk`);
     
     if (await fs.pathExists(apkSourcePath)) {
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
       await fs.copy(apkSourcePath, apkDestPath);
       
       // Return success response with download link
@@ -199,7 +259,7 @@ storeFile=upload-keystore.jks`;
         success: true,
         buildId: buildId,
         message: 'APK built successfully',
-        downloadUrl: `http://localhost:3000/builds/${buildId}/${path.basename(apkDestPath)}`,
+        downloadUrl: `${baseUrl}/builds/${buildId}/${path.basename(apkDestPath)}`,
         apkPath: apkDestPath,
         buildDetails: {
           app_name,
@@ -289,7 +349,7 @@ app.get('/builds', async (req, res) => {
           buildId,
           createdAt: stat.birthtime,
           status: apkFile ? 'completed' : 'building',
-          downloadUrl: apkFile ? `/builds/${buildId}/${apkFile}` : null
+          downloadUrl: apkFile ? `${req.protocol}://${req.get('host')}/builds/${buildId}/${apkFile}` : null
         });
       }
     }
