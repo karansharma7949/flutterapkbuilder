@@ -1,0 +1,42 @@
+# Ignore everything not needed in the Docker build context
+.git
+.gitignore
+node_modules
+**/node_modules
+**/.dart_tool
+**/build
+**/.gradle
+**/.idea
+**/.vscode
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.metadata
+**/DerivedData
+**/Pods
+**/.symlinks
+**/profile
+**/xcuserdata
+**/ephemeral
+**/flutter/generated_plugin_registrant.*
+
+# Local OS files
+.DS_Store
+Thumbs.db
+
+# Archives except the required template zip
+*.zip
+!webview-template-main.zip
+*.tar.gz
+*.rar
+
+# Backend outputs and temp
+flutter-apk-builder/builds
+flutter-apk-builder/tmp
+flutter-apk-builder/temp
+flutter-apk-builder/logs
+*.log
+
+# Env files
+*.env
+.env.*
