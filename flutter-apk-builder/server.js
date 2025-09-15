@@ -203,8 +203,8 @@ app.post('/build-apk', async (req, res) => {
     const gradleProps = `# Added by server.js for Railway build stability\n`
       + `org.gradle.daemon=false\n`
       + `org.gradle.parallel=false\n`
-      + `org.gradle.workers.max=1\n`
-      + `org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8\n`
+      + `org.gradle.workers.max=2\n`
+      + `org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8\n`
       + `android.useAndroidX=true\n`
       + `android.enableJetifier=false\n`;
     try {
@@ -270,8 +270,8 @@ storeFile=upload-keystore.jks`;
       env: {
         ...process.env,
         CI: 'true',
-        GRADLE_OPTS: '-Xmx1536m -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1',
-        JAVA_TOOL_OPTIONS: '-Xmx1536m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8'
+        GRADLE_OPTS: '-Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=2',
+        JAVA_TOOL_OPTIONS: '-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
       }
     });
     
