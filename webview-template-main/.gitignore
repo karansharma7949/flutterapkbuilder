@@ -1,45 +1,175 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
+# ====================
+# Flutter Project Files
+# ====================
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Build outputs
+build/
 .dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
+
+# Flutter/Dart-related
+.packages
 .pub-cache/
 .pub/
-/build/
+.metadata
+.flutter-plugins
+.flutter-plugins-dependencies
 
-# Symbolication related
-app.*.symbols
+# Generated files
+*.g.dart
+*.freezed.dart
+*.mocks.dart
 
-# Obfuscation related
-app.*.map.json
+# ====================
+# Android-specific
+# ====================
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+*.jks
 
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ====================
+# iOS-specific
+# ====================
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*sync/
+**/ios/**/.sconsign.dblite
+**/ios/**/.tags*
+**/ios/**/.vagrant/
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/profile
+**/ios/**/xcuserdata
+**/ios/.generated/
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# ====================
+# Web-specific
+# ====================
+**/web/flutter_service_worker.js
+
+# ====================
+# Windows-specific
+# ====================
+**/windows/flutter/generated_plugin_registrant.cc
+**/windows/flutter/generated_plugin_registrant.h
+
+# ====================
+# MacOS-specific
+# ====================
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# ====================
+# Linux-specific
+# ====================
+**/linux/flutter/generated_plugin_registrant.cc
+**/linux/flutter/generated_plugin_registrant.h
+
+# ====================
+# APK Builder Specific
+# ====================
+
+# Build outputs and temporary files
+builds/
+temp/
+tmp/
+*.apk
+*.aab
+*.ipa
+
+# Uploaded files
+uploads/
+
+# Logs
+logs/
+*.log
+
+# ====================
+# IDE and Editor Files
+# ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# JetBrains
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# ====================
+# OS-specific
+# ====================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ====================
+# Archive files
+# ====================
+*.zip
+*.tar.gz
+*.rar
+
+# ====================
+# Miscellaneous
+# ====================
+*.class
+*.lock
+*.tmp
+*.bak
+
+# Firebase
+.firebase/
+
+# Crashlytics
+**/ios/**/ServiceDefinitions.json
+**/android/**/google-services.json
+**/ios/**/GoogleService-Info.plist
+
+# ====================
+# Project-specific exclusions
+# ====================
+
+# Keep webview-template-main source but ignore builds
+webview-template-main/build/
+webview-template-main/.dart_tool/
+webview-template-main/.flutter-plugins
+webview-template-main/.flutter-plugins-dependencies
+webview-template-main/.packages
+
+# But keep the source zip file if needed for distribution
+# Uncomment the next line if you want to track the template zip
+# !webview-template-main.zip
