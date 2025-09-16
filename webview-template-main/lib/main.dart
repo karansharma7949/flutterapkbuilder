@@ -1,11 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:flutter/services.dart'; // For SystemNavigator
+import 'package:flutter/services.dart';
 import 'config/constants.dart';
 import 'dart:async';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set a safe default overlay right away
+  final brightness =
+      WidgetsBinding.instance.platformDispatcher.platformBrightness;
+  SystemChrome.setSystemUIOverlayStyle(
+    brightness == Brightness.dark
+        ? const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            systemNavigationBarColor: Colors.black,
+            systemNavigationBarIconBrightness: Brightness.light,
+          )
+        : const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            systemNavigationBarColor: Colors.white,
+            systemNavigationBarIconBrightness: Brightness.dark,
+          ),
+  );
+
   runApp(const MyApp());
 }
 
@@ -17,14 +37,44 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'apk',
-      home: const MyHomePage(title: 'apk'),
+      theme: ThemeData(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: Colors.white,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: Colors.black,
+      ),
+      themeMode: ThemeMode.system,
+      home: Builder(
+        builder: (context) {
+          final brightness = MediaQuery.of(context).platformBrightness;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            SystemChrome.setSystemUIOverlayStyle(
+              brightness == Brightness.dark
+                  ? const SystemUiOverlayStyle(
+                      statusBarColor: Colors.transparent,
+                      statusBarIconBrightness: Brightness.light,
+                      systemNavigationBarColor: Colors.black,
+                      systemNavigationBarIconBrightness: Brightness.light,
+                    )
+                  : const SystemUiOverlayStyle(
+                      statusBarColor: Colors.transparent,
+                      statusBarIconBrightness: Brightness.dark,
+                      systemNavigationBarColor: Colors.white,
+                      systemNavigationBarIconBrightness: Brightness.dark,
+                    ),
+            );
+          });
+          return const MyHomePage(title: 'apk');
+        },
+      ),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
   final String title;
 
   @override
@@ -32,20 +82,29 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late final WebViewController controller;
+  WebViewController? controller;
   bool _showSplash = true;
   Timer? _splashTimer;
+  Brightness? _lastBrightness;
 
   @override
   void initState() {
     super.initState();
+    _initializeWebView();
 
-    // Get initial URL with fallback
+    // Start timer for splash screen
+    _splashTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _showSplash = false);
+      }
+    });
+  }
+
+  void _initializeWebView() {
     final String initialUrl = kWebviewUrl;
 
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFFFFFFFF))
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (NavigationRequest request) {
@@ -54,18 +113,6 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       )
       ..loadRequest(Uri.parse(initialUrl));
-
-    // Start timer for splash screen (testing with 2 seconds first)
-    print('Starting splash screen timer...');
-    _splashTimer = Timer(const Duration(seconds: 2), () {
-      print('Timer completed, hiding splash screen...');
-      if (mounted) {
-        setState(() {
-          _showSplash = false;
-        });
-        print('Splash screen hidden, showing webview...');
-      }
-    });
   }
 
   @override
@@ -76,51 +123,80 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = MediaQuery.of(context).platformBrightness;
     final String logoPath = kSplashLogo;
-    final Widget splashLogo =
-        (logoPath.startsWith('http://') || logoPath.startsWith('https://'))
-            ? Image.network(
-                logoPath,
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-              )
-            : Image.asset(
-                logoPath,
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-              );
 
-    return PopScope(
-      canPop: false, // Prevent default pop behavior
-      onPopInvokedWithResult: (bool didPop, Object? result) async {
-        if (!didPop) {
-          // Pop was canceled, so handle WebView navigation
-          if (await controller.canGoBack()) {
-            controller.goBack(); // Go back in WebView
-          } else {
-            // No back history, exit the app
-            SystemNavigator.pop();
-          }
-        }
-      },
+    if (controller != null && _lastBrightness != brightness) {
+      controller!.setBackgroundColor(
+        brightness == Brightness.dark ? Colors.black : Colors.white,
+      );
+      _lastBrightness = brightness;
+    }
+
+    // ✅ This will always enforce system UI style correctly
+    final overlayStyle = brightness == Brightness.dark
+        ? const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            systemNavigationBarColor: Colors.black,
+            systemNavigationBarIconBrightness: Brightness.light,
+          )
+        : const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            systemNavigationBarColor: Colors.white,
+            systemNavigationBarIconBrightness: Brightness.dark,
+          );
+
+    final splashLogo = ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.asset(
+        logoPath,
+        width: 130,
+        height: 130,
+        fit: BoxFit.contain,
+      ),
+    );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
-          child: _showSplash
-              ? Container(
-                  color: Colors.white,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        splashLogo,
-                      ],
-                    ),
-                  ),
-                )
-              : WebViewWidget(controller: controller),
+          child: PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (bool didPop, Object? result) async {
+              if (!didPop && controller != null) {
+                if (await controller!.canGoBack()) {
+                  controller!.goBack();
+                } else {
+                  SystemNavigator.pop();
+                }
+              } else if (!didPop) {
+                SystemNavigator.pop();
+              }
+            },
+            child: _showSplash
+                ? Container(
+                    color: brightness == Brightness.dark
+                        ? Colors.black
+                        : Colors.white,
+                    child: Center(child: splashLogo),
+                  )
+                : controller != null
+                    ? Container(
+                        color: brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.white,
+                        child: WebViewWidget(controller: controller!),
+                      )
+                    : Container(
+                        color: brightness == Brightness.dark
+                            ? Colors.black
+                            : Colors.white,
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+          ),
         ),
       ),
     );
