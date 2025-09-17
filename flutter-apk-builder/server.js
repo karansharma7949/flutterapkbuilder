@@ -277,20 +277,50 @@ storeFile=upload-keystore.jks`;
       }
     });
     
+    // Build AAB (Android App Bundle) with reduced memory usage
+    console.log('Building AAB...');
+    await execAsync('flutter build appbundle --release --no-shrink --no-tree-shake-icons --android-skip-build-dependency-validation', {
+      env: {
+        ...process.env,
+        CI: 'true',
+        GRADLE_OPTS: '-Xmx3g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=2',
+        JAVA_TOOL_OPTIONS: '-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
+      }
+    });
+    
     // Copy APK to builds directory
     const apkSourcePath = path.join(workingDir, 'build', 'app', 'outputs', 'flutter-apk', 'app-release.apk');
     const apkDestPath = path.join(buildDir, `${app_name.replace(/\s+/g, '_')}-release.apk`);
     
-    if (await fs.pathExists(apkSourcePath)) {
+    // Copy AAB to builds directory
+    const aabSourcePath = path.join(workingDir, 'build', 'app', 'outputs', 'bundle', 'release', 'app-release.aab');
+    const aabDestPath = path.join(buildDir, `${app_name.replace(/\s+/g, '_')}-release.aab`);
+    
+    const apkExists = await fs.pathExists(apkSourcePath);
+    const aabExists = await fs.pathExists(aabSourcePath);
+    
+    if (apkExists && aabExists) {
       const baseUrl = `${req.protocol}://${req.get('host')}`;
       await fs.copy(apkSourcePath, apkDestPath);
+      await fs.copy(aabSourcePath, aabDestPath);
       
-      // Return success response with download link
+      // Return success response with download links for both APK and AAB
       res.json({
         success: true,
         buildId: buildId,
-        message: 'APK built successfully',
+        message: 'APK and AAB built successfully',
         downloadUrl: `${baseUrl}/builds/${buildId}/${path.basename(apkDestPath)}`,
+        downloadAab: `${baseUrl}/builds/${buildId}/${path.basename(aabDestPath)}`,
+        downloads: {
+          apk: {
+            url: `${baseUrl}/builds/${buildId}/${path.basename(apkDestPath)}`,
+            path: apkDestPath
+          },
+          aab: {
+            url: `${baseUrl}/builds/${buildId}/${path.basename(aabDestPath)}`,
+            path: aabDestPath
+          }
+        },
         apkPath: apkDestPath,
         buildDetails: {
           app_name,
@@ -300,7 +330,10 @@ storeFile=upload-keystore.jks`;
         }
       });
     } else {
-      throw new Error('APK file not found after build');
+      const missingFiles = [];
+      if (!apkExists) missingFiles.push('APK');
+      if (!aabExists) missingFiles.push('AAB');
+      throw new Error(`${missingFiles.join(' and ')} file(s) not found after build`);
     }
     
   } catch (error) {
@@ -334,12 +367,28 @@ app.get('/build-status/:buildId', async (req, res) => {
     
     const files = await fs.readdir(buildDir);
     const apkFile = files.find(file => file.endsWith('.apk'));
+    const aabFile = files.find(file => file.endsWith('.aab'));
     
-    if (apkFile) {
+    if (apkFile && aabFile) {
       res.json({
         status: 'completed',
         buildId: buildId,
+        downloads: {
+          apk: `/builds/${buildId}/${apkFile}`,
+          aab: `/builds/${buildId}/${aabFile}`
+        },
+        // Keep legacy downloadUrl for backward compatibility
         downloadUrl: `/builds/${buildId}/${apkFile}`
+      });
+    } else if (apkFile || aabFile) {
+      res.json({
+        status: 'partial',
+        buildId: buildId,
+        downloads: {
+          apk: apkFile ? `/builds/${buildId}/${apkFile}` : null,
+          aab: aabFile ? `/builds/${buildId}/${aabFile}` : null
+        },
+        downloadUrl: apkFile ? `/builds/${buildId}/${apkFile}` : null
       });
     } else {
       res.json({
@@ -375,11 +424,24 @@ app.get('/builds', async (req, res) => {
       if (stat.isDirectory()) {
         const files = await fs.readdir(buildDir);
         const apkFile = files.find(file => file.endsWith('.apk'));
+        const aabFile = files.find(file => file.endsWith('.aab'));
+        
+        let status = 'building';
+        if (apkFile && aabFile) {
+          status = 'completed';
+        } else if (apkFile || aabFile) {
+          status = 'partial';
+        }
         
         builds.push({
           buildId,
           createdAt: stat.birthtime,
-          status: apkFile ? 'completed' : 'building',
+          status: status,
+          downloads: {
+            apk: apkFile ? `${req.protocol}://${req.get('host')}/builds/${buildId}/${apkFile}` : null,
+            aab: aabFile ? `${req.protocol}://${req.get('host')}/builds/${buildId}/${aabFile}` : null
+          },
+          // Keep legacy downloadUrl for backward compatibility
           downloadUrl: apkFile ? `${req.protocol}://${req.get('host')}/builds/${buildId}/${apkFile}` : null
         });
       }
@@ -423,7 +485,7 @@ app.get('/', (req, res) => {
     message: 'Flutter APK Builder API',
     version: '1.0.0',
     endpoints: {
-      'POST /build-apk': 'Build Flutter APK from webview template',
+      'POST /build-apk': 'Build Flutter APK and AAB from webview template',
       'GET /build-status/:buildId': 'Check build status',
       'GET /builds': 'List all builds',
       'GET /health': 'Health check'
